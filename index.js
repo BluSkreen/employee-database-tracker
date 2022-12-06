@@ -9,6 +9,6 @@ const employee = new Employee();
 // role.viewAll();
 // employee.viewAll();
 
-// department.add("service");
-// role.add("Customer Service", 80000, 5);
-// employee.add("Darth", "Vader", 5, 1);
+department.add("service");
+role.add("Customer Service", 80000, "service");
+employee.add("Darth", "Vader", "service", "han solo");
