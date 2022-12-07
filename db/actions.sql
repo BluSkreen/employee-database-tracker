@@ -1,3 +1,4 @@
+USE management_db;
 
 /* view all departments */
 SELECT * FROM department;
@@ -8,7 +9,15 @@ FROM department
 INNER JOIN role ON department.id = role.id;
 
 /* view all employees*/
-SELECT * FROM employee;
+SELECT user.id, user.first_name, user.last_name, role.title, department.name AS department, role.salary, 
+	CONCAT(manager.first_name, " ", manager.last_name) AS manager
+FROM employee user
+JOIN employee manager
+	ON user.manager_id = manager.id
+JOIN role
+	ON role.id = user.id
+JOIN department
+	ON department.id = role.id;
 
 /* add department */
 SELECT id FROM department WHERE name = "Sales";

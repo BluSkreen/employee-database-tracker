@@ -70,7 +70,15 @@ class Employee {
   add = (first_name, last_name, role, manager) => {
     // get the role id using the title
     let role_id = db.query(
-      `SELECT id FROM role WHERE title = "${role}";`,
+      `SELECT user.id, user.first_name, user.last_name, role.title, department.name AS department, role.salary, 
+	CONCAT(manager.first_name, " ", manager.last_name) AS manager
+FROM employee user
+JOIN employee manager
+	ON user.manager_id = manager.id
+JOIN role
+	ON role.id = user.id
+JOIN department
+	ON department.id = role.id;`,
       function (err, results) {
         if (err) {
           console.error(err);
