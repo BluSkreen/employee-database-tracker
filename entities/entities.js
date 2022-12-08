@@ -24,8 +24,7 @@ class Department {
   };
 
   delete = async (name) => {
-    await db.promise().query(
-      `DELETE FROM role WHERE title = ${name};`)
+    await db.promise().query(`DELETE FROM department WHERE name = "${name}";`)
       .then(() => {
         console.log("Deleted Department!");
       });
@@ -65,7 +64,7 @@ class Role {
 
   delete = async (title) => {
     await db.promise().query(
-      `DELETE FROM role WHERE title = ${title};`)
+      `DELETE FROM role WHERE title = "${title}";`)
       .then(() => {
         console.log("Deleted Role!");
       });
@@ -230,7 +229,7 @@ WHERE department.name = "${department}";`)
       });
 
     await db.promise().query(
-      `DELETE FROM employee WHERE id = ${id};`)
+      `DELETE FROM employee WHERE id = "${id}";`)
       .then(() => {
         console.log("Deleted Employee!");
       });

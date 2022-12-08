@@ -10,6 +10,9 @@ SELECT * FROM employee;
 SELECT * FROM role;
 SELECT * FROM department;
 
+DELETE FROM department WHERE name = "IT";
+
+
 /* view all roles - title, role id, department, salary */
 SELECT role.title, role.id, department.name AS department, role.salary 
 FROM department
