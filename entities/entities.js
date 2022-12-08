@@ -12,21 +12,25 @@ const db = mysql.createConnection(
 );
 
 class Department {
-  viewAll = () => {
-    db.query("SELECT * FROM department", function (err, results) {
-      console.table(results);
-    });
+  viewAll = async () => {
+    await db.promise().query("SELECT * FROM department")
+    .then(([rows]) => console.table(rows));
   };
 
   // add a department
-  add = (name) => {
-    db.query(`INSERT INTO department(name) VALUES ("${name}");`, function (err, results) {
-      if (err) {
-        console.error(err);
-      } else {
-        console.log("Department added!");
-      }
+  add = async (name) => {
+    await db.promise().query(`INSERT INTO department(name) VALUES ("${name}");`)
+    .then(() => console.log("Department added!"));     
+  };
+
+  getDepartments = async () => {
+    let departments;
+    await db.promise().query(`SELECT name FROM department;`)
+    .then(([rows]) => {
+      console.log(rows);
+      departments = rows.map(obj => obj['name']);
     });
+    return departments;
   };
 }
 
@@ -57,19 +61,20 @@ class Role {
       );
     });
   };
+  getRoles = async () => {
+    let roles;
+    await db.promise().query(`SELECT title FROM role;`)
+    .then(([rows]) => {
+      roles = rows.map(obj => obj['title']);
+    });
+    return roles;
+  };
 }
 
 class Employee {
+  // view each employee's id, name, role, department, salary, and manager
   viewAll = () => {
-    db.query("SELECT * FROM employee", function (err, results) {
-      console.table(results);
-    });
-  };
-
-  // add an employee
-  add = (first_name, last_name, role, manager) => {
-    // get the role id using the title
-    let role_id = db.query(
+    db.query(
       `SELECT user.id, user.first_name, user.last_name, role.title, department.name AS department, role.salary, 
 	CONCAT(manager.first_name, " ", manager.last_name) AS manager
 FROM employee user
@@ -78,17 +83,66 @@ JOIN employee manager
 JOIN role
 	ON role.id = user.id
 JOIN department
-	ON department.id = role.id;`,
+	ON department.id = role.id`,
       function (err, results) {
-        if (err) {
-          console.error(err);
-        }
+        console.table(results);
       }
     );
+  };
+
+  viewManagerEmployees = async (manager) => {
+    let manager_id;
+    await db.promise()
+      .query(`SELECT id FROM employee WHERE first_name = "${manager.split(" ")[0]}" AND last_name = "${manager.split(" ")[1]}";`
+      )
+      .then(([rows]) => {
+        manager_id = rows[0].id;
+      });
+    await db.promise()
+      .query(`SELECT * FROM employee WHERE id != manager_id AND manager_id = ${manager_id};`)
+      .then(([rows]) => {
+        console.table(rows);
+      });
+  };
+
+  viewDepartmentEmployees = async (department) => {
+    await db.promise().query(
+      `SELECT employee.id, employee.first_name, employee.last_name, role.title
+FROM employee
+JOIN role
+	ON role.id = employee.role_id
+JOIN department
+	ON department.id = role.department_id
+WHERE department.name = "${department}";`)
+    .then(([rows]) => console.table(rows));
+  };
+
+  viewUtilizedBudget = async (department) => {
+    await db.promise().query(
+      `SELECT department.name, sum(ALL role.salary) as "Utilized Budget"
+FROM employee
+JOIN role
+	ON role.id = employee.role_id
+JOIN department
+	ON department.id = role.department_id
+WHERE department.name = "${department}";`)
+    .then(([rows]) => console.table(rows));
+  };
+
+  // add an employee
+  add = (first_name, last_name, role, manager) => {
+    // get the role id using the title
+    let role_id = db.query(`SELECT id FROM role WHERE title = "${role}";`, function (err, results) {
+      if (err) {
+        console.error(err);
+      }
+    });
 
     //get the managers id by spliting the last and first name for use in the query
     let manager_id = db.query(
-      `SELECT id FROM employee WHERE first_name = "${manager.split(" ")[0]}" AND last_name = "${manager.split(" ")[1]}";`,
+      `SELECT id FROM employee WHERE first_name = "${manager.split(" ")[0]}" AND last_name = "${
+        manager.split(" ")[1]
+      }";`,
       function (err, results) {
         if (err) {
           console.error(err);
@@ -99,26 +153,25 @@ JOIN department
     db.query(
       `INSERT INTO employee(first_name, last_name, role_id, manager_id) VALUES ("${first_name}","${last_name}",${role_id},${manager_id});`,
       function (err, results) {
-       console.log("Employee added!");
+        console.log("Employee added!");
       }
     );
   };
 
   // update an employee's role by using their id
-  update = (first_name, last_name, role) => {
+  updateRole = (name, role) => {
     // use the role name to get role id
-    let role_id = db.query(
-      `SELECT id FROM role WHERE title = "${role}";`,
-      function (err, results) {
-        if (err) {
-          console.error(err);
-        }
+    let role_id = db.query(`SELECT id FROM role WHERE title = "${role}";`, function (err, results) {
+      if (err) {
+        console.error(err);
       }
-    );
+    });
 
     // use the first and last names to get the id
     let id = db.query(
-      `SELECT id FROM employee WHERE first_name = "${first_name}" AND last_name = "${last_name}";`,
+      `SELECT id FROM employee WHERE first_name = "${name.split(" ")[0]}" AND last_name = "${
+        name.split(" ")[1]
+      }";`,
       function (err, results) {
         if (err) {
           console.error(err);
@@ -130,9 +183,64 @@ JOIN department
       console.log("Updated role!");
     });
   };
+
+  // update an employee's manager by using their id
+  updateManager = (name, manager) => {
+    //get the managers id by spliting the last and first name for use in the query
+    let manager_id = db.query(
+      `SELECT id FROM employee WHERE first_name = "${manager.split(" ")[0]}" AND last_name = "${
+        manager.split(" ")[1]
+      }";`,
+      function (err, results) {
+        if (err) {
+          console.error(err);
+        }
+      }
+    );
+
+    // use the first and last names to get the id
+    let id = db.query(
+      `SELECT id FROM employee WHERE first_name = "${name.split(" ")[0]}" AND last_name = "${
+        name.split(" ")[1]
+      }";`,
+      function (err, results) {
+        if (err) {
+          console.error(err);
+        }
+      }
+    );
+
+    db.query(
+      `UPDATE employee SET manager_id = ${manager_id} WHERE id = ${id};`,
+      function (err, results) {
+        console.log("Updated role!");
+      }
+    );
+  };
+
+  getManagers = async () => {
+    let managers;
+    await db
+      .promise()
+      .query(`SELECT CONCAT(first_name, " ", last_name) FROM employee WHERE id = manager_id;`)
+      .then(([rows]) => {
+        managers = rows.map((obj) => obj['CONCAT(first_name, " ", last_name)']);
+        // console.log(managers);
+      });
+    return managers;
+  };
+
+  getEmployees = async () => {
+    let employees;
+    await db
+      .promise()
+      .query(`SELECT CONCAT(first_name, " ", last_name) FROM employee;`)
+      .then(([rows]) => {
+        employees = rows.map((obj) => obj['CONCAT(first_name, " ", last_name)']);
+        // console.log(employees);
+      });
+    return employees;
+  };
 }
 
-// const dp = new Department();
-// dp.viewDp();
-
-module.exports = { Department, Role, Employee };
+module.exports = { Department, Role, Employee, db };
